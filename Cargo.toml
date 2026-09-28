@@ -1,0 +1,8 @@
+[package]
+name = "ureq-eintr-repro"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+ureq = "=3.4.2"
