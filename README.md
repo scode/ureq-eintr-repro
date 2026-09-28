@@ -9,10 +9,12 @@ When a timeout is configured, ureq sets `SO_RCVTIMEO` on its socket. On Linux a 
 not restarted after a signal interrupts it; it fails with `EINTR` (see signal(7)). ureq's `TcpTransport::await_input`
 passes that `ErrorKind::Interrupted` up as a request failure instead of retrying the read.
 
-No signal handler is needed to trigger it. glibc's `posix_spawn`, which `std::process::Command` uses, blocks all
-signals in the spawning thread, so a `SIGCHLD` arriving then is queued rather than discarded and can wake another
-thread's blocked read. In practice: any process that spawns subprocesses while another thread makes ureq requests, such
-as a test binary where some tests run commands and others talk HTTP.
+No signal handler is needed to trigger it. The kernel drops a `SIGCHLD` that nothing handles, but only if the thread
+that spawned the child does not have it blocked when the child exits; otherwise it is queued for the whole process and
+can wake another thread's blocked read. glibc's `posix_spawn`, which `std::process::Command` uses, blocks all signals
+in the calling thread until it returns, and a short-lived child such as `true` can exit before then. In practice: any
+process that runs quick commands on one thread while another thread makes ureq requests, such as a test binary where
+some tests run commands and others talk HTTP.
 
 ## Reproducing
 

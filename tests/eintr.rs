@@ -4,12 +4,14 @@
 //! does not restart a socket read with a receive timeout after a signal
 //! interrupts it; the read fails with EINTR instead (see signal(7), "Interruption
 //! of system calls and library functions by signal handlers"). This happens
-//! even when the process installs no signal handler at all: glibc's
-//! posix_spawn (what std::process::Command uses) blocks every signal in the
-//! spawning thread, so a SIGCHLD from an exiting child arrives while it is
-//! blocked there, is queued instead of discarded, and wakes another thread's
-//! blocked read. ureq's TcpTransport::await_input passes that
-//! ErrorKind::Interrupted straight up instead of retrying the read.
+//! even when the process installs no signal handler at all. The kernel drops
+//! an unhandled SIGCHLD only if the thread that spawned the child does not have
+//! it blocked when the child exits; otherwise it is queued for the process and
+//! can wake another thread's blocked read. glibc's posix_spawn (what
+//! std::process::Command uses) blocks every signal in the calling thread until
+//! it returns, and a child as short-lived as `true` can exit before then.
+//! ureq's TcpTransport::await_input passes that ErrorKind::Interrupted straight
+//! up instead of retrying the read.
 //!
 //! The test runs a local HTTP server that answers after a short delay, so the
 //! client sits in read(), while other threads spawn `true` in a loop. Every
